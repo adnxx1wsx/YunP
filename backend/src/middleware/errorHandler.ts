@@ -34,18 +34,17 @@ export const errorHandler = (
 
   // 记录错误
   if (statusCode >= 500) {
-    log.error('Server Error:', err, {
+    console.error('Server Error:', {
+      message: err.message,
+      stack: err.stack,
       url: req.url,
       method: req.method,
       ip: req.ip,
       userAgent: req.get('User-Agent'),
-      userId: (req as any).user?.id,
-      body: req.body,
-      params: req.params,
-      query: req.query
+      userId: (req as any).user?.id
     });
   } else if (statusCode >= 400) {
-    log.warn('Client Error:', {
+    console.warn('Client Error:', {
       message: err.message,
       code: err.code,
       url: req.url,

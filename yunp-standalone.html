@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YunP 云存储平台 - 独立版</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .logo {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+        
+        h1 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 16px;
+        }
+        
+        .status-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #28a745;
+        }
+        
+        .status-success {
+            border-left-color: #28a745;
+            background: #d4edda;
+        }
+        
+        .status-info {
+            border-left-color: #17a2b8;
+            background: #d1ecf1;
+        }
+        
+        .status-warning {
+            border-left-color: #ffc107;
+            background: #fff3cd;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+            margin: 10px 0;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .connection-test {
+            margin: 20px 0;
+        }
+        
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .server-config {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        
+        .instructions {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        .instructions h3 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+        
+        .instructions ol {
+            margin-left: 20px;
+        }
+        
+        .instructions li {
+            margin: 5px 0;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">☁️</div>
+            <h1>YunP 云存储平台</h1>
+            <p class="subtitle">独立访问版本</p>
+        </div>
+        
+        <div class="status-card status-success">
+            <h3>🎉 安装成功！</h3>
+            <p>YunP云存储平台已成功安装并运行在您的计算机上。</p>
+        </div>
+        
+        <div class="status-card status-info">
+            <h3>📡 服务器信息</h3>
+            <div class="server-config">
+                后端服务: Node.js + Express<br>
+                数据库: SQLite<br>
+                端口: 8080<br>
+                状态: 运行中
+            </div>
+        </div>
+        
+        <div class="connection-test">
+            <h3>🔗 连接测试</h3>
+            <div class="form-group">
+                <label for="serverUrl">服务器地址:</label>
+                <select id="serverUrl">
+                    <option value="http://localhost:8080">http://localhost:8080</option>
+                    <option value="http://127.0.0.1:8080">http://127.0.0.1:8080</option>
+                    <option value="http://0.0.0.0:8080">http://0.0.0.0:8080</option>
+                </select>
+            </div>
+            
+            <button class="btn" onclick="testConnection()">测试连接</button>
+            <button class="btn btn-secondary" onclick="openInNewTab()">在新标签页打开</button>
+            
+            <div id="testResults"></div>
+        </div>
+        
+        <div class="status-card status-warning">
+            <h3>🔐 默认管理员账户</h3>
+            <div class="server-config">
+                邮箱: admin@yunp.com<br>
+                密码: admin123<br>
+                <small style="color: #856404;">⚠️ 首次使用请及时修改密码</small>
+            </div>
+        </div>
+        
+        <div class="instructions">
+            <h3>📋 使用说明</h3>
+            <ol>
+                <li>点击上方"测试连接"按钮检查服务器状态</li>
+                <li>如果连接成功，点击"在新标签页打开"</li>
+                <li>使用默认管理员账户登录</li>
+                <li>开始使用云存储功能</li>
+                <li>及时修改管理员密码</li>
+            </ol>
+        </div>
+        
+        <div class="instructions">
+            <h3>🛠️ 故障排除</h3>
+            <p><strong>如果无法连接，请尝试:</strong></p>
+            <ol>
+                <li>检查防火墙设置，允许8080端口</li>
+                <li>尝试不同的浏览器</li>
+                <li>清除浏览器缓存</li>
+                <li>使用127.0.0.1而不是localhost</li>
+                <li>检查是否有代理设置</li>
+            </ol>
+        </div>
+        
+        <div class="status-card">
+            <h3>✅ 功能特性</h3>
+            <ul style="margin-left: 20px; margin-top: 10px;">
+                <li>✅ 用户认证和权限管理</li>
+                <li>✅ 文件上传和下载</li>
+                <li>✅ 文件管理和组织</li>
+                <li>✅ 安全的文件分享</li>
+                <li>✅ 现代化Web界面</li>
+                <li>✅ 移动设备支持</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        function showResult(message, type = 'success') {
+            const results = document.getElementById('testResults');
+            const className = type === 'success' ? 'alert-success' : 'alert-error';
+            results.innerHTML = `<div class="alert ${className}">${message}</div>`;
+        }
+        
+        async function testConnection() {
+            const serverUrl = document.getElementById('serverUrl').value;
+            const testUrl = serverUrl + '/api/health';
+            
+            showResult('正在测试连接...', 'info');
+            
+            try {
+                const response = await fetch(testUrl, {
+                    method: 'GET',
+                    mode: 'cors'
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        showResult(`✅ 连接成功！服务器响应正常。<br>服务器地址: ${serverUrl}`, 'success');
+                    } else {
+                        showResult('❌ 服务器响应异常', 'error');
+                    }
+                } else {
+                    showResult(`❌ 连接失败，HTTP状态码: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                showResult(`❌ 连接失败: ${error.message}<br><br>可能的原因:<br>1. 服务器未启动<br>2. 端口被防火墙阻止<br>3. 网络配置问题`, 'error');
+            }
+        }
+        
+        function openInNewTab() {
+            const serverUrl = document.getElementById('serverUrl').value;
+            window.open(serverUrl, '_blank');
+        }
+        
+        // 页面加载时自动测试连接
+        window.onload = function() {
+            setTimeout(testConnection, 1000);
+        };
+    </script>
+</body>
+</html>

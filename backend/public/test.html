@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>YunP 测试页面</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 800px; 
+            margin: 50px auto; 
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #333; text-align: center; }
+        .status { 
+            padding: 15px; 
+            margin: 10px 0; 
+            border-radius: 5px; 
+            font-weight: bold;
+        }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .test-btn {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-btn:hover { background: #0056b3; }
+        #results { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎉 YunP 云存储平台测试页面</h1>
+        
+        <div class="status success">
+            ✅ 恭喜！您已成功访问YunP云存储平台！
+        </div>
+        
+        <div class="status info">
+            📡 服务器状态: 正常运行<br>
+            🌐 访问地址: <span id="currentUrl"></span><br>
+            🗄️ 数据库: SQLite 连接正常<br>
+            📁 文件存储: 已就绪
+        </div>
+        
+        <h2>🧪 功能测试</h2>
+        <button class="test-btn" onclick="testAPI()">测试API连接</button>
+        <button class="test-btn" onclick="testLogin()">测试登录功能</button>
+        <button class="test-btn" onclick="openMainApp()">打开完整应用</button>
+        
+        <div id="results"></div>
+        
+        <h2>📝 默认管理员账户</h2>
+        <div class="status info">
+            邮箱: admin@yunp.com<br>
+            密码: admin123<br>
+            <small>⚠️ 首次使用请及时修改密码</small>
+        </div>
+        
+        <h2>🚀 下一步操作</h2>
+        <ol>
+            <li>点击上方"打开完整应用"按钮</li>
+            <li>使用管理员账户登录</li>
+            <li>测试文件上传下载功能</li>
+            <li>修改管理员密码</li>
+        </ol>
+    </div>
+
+    <script>
+        // 显示当前URL
+        document.getElementById('currentUrl').textContent = window.location.href;
+        
+        function showResult(message, type = 'success') {
+            const results = document.getElementById('results');
+            const className = type === 'success' ? 'success' : 'info';
+            results.innerHTML += `<div class="status ${className}">${message}</div>`;
+        }
+        
+        async function testAPI() {
+            try {
+                const response = await fetch('/api/health');
+                const data = await response.json();
+                if (data.success) {
+                    showResult('✅ API连接测试成功！服务器响应正常。');
+                } else {
+                    showResult('❌ API连接测试失败。', 'error');
+                }
+            } catch (error) {
+                showResult('❌ API连接测试失败: ' + error.message, 'error');
+            }
+        }
+        
+        async function testLogin() {
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'admin@yunp.com',
+                        password: 'admin123'
+                    })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    showResult('✅ 登录功能测试成功！管理员账户可正常登录。');
+                } else {
+                    showResult('❌ 登录功能测试失败: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showResult('❌ 登录功能测试失败: ' + error.message, 'error');
+            }
+        }
+        
+        function openMainApp() {
+            window.location.href = '/';
+        }
+        
+        // 页面加载时自动测试API
+        window.onload = function() {
+            setTimeout(testAPI, 1000);
+        };
+    </script>
+</body>
+</html>

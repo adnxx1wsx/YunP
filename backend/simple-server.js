@@ -17,7 +17,8 @@ const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key';
 // 中间件
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '../frontend/dist')));
+app.use(express.static(path.join(__dirname, 'public')));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // 数据库连接
 const db = new sqlite3.Database('./database.sqlite', (err) => {
@@ -288,7 +289,7 @@ app.use((err, req, res, next) => {
 });
 
 // 启动服务器
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log('');
   console.log('🚀 YunP 云存储平台启动成功!');
   console.log('================================');
