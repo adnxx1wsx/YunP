@@ -1,0 +1,202 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer components {
+  /* 自定义滚动条 */
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 #f1f5f9;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-gray-100 rounded-full;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 rounded-full hover:bg-gray-400;
+  }
+  
+  /* 文件拖拽区域 */
+  .dropzone {
+    @apply border-2 border-dashed border-gray-300 rounded-lg p-8 text-center transition-colors;
+  }
+  
+  .dropzone.active {
+    @apply border-primary-500 bg-primary-50;
+  }
+  
+  .dropzone.reject {
+    @apply border-red-500 bg-red-50;
+  }
+  
+  /* 文件网格布局 */
+  .file-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+  }
+  
+  /* 文件卡片 */
+  .file-card {
+    @apply bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow cursor-pointer;
+  }
+  
+  .file-card:hover {
+    @apply border-primary-300;
+  }
+  
+  .file-card.selected {
+    @apply border-primary-500 bg-primary-50;
+  }
+  
+  /* 文件图标 */
+  .file-icon {
+    @apply w-12 h-12 mx-auto mb-2 flex items-center justify-center rounded-lg;
+  }
+  
+  .file-icon.image {
+    @apply bg-green-100 text-green-600;
+  }
+  
+  .file-icon.video {
+    @apply bg-purple-100 text-purple-600;
+  }
+  
+  .file-icon.audio {
+    @apply bg-yellow-100 text-yellow-600;
+  }
+  
+  .file-icon.document {
+    @apply bg-blue-100 text-blue-600;
+  }
+  
+  .file-icon.archive {
+    @apply bg-orange-100 text-orange-600;
+  }
+  
+  .file-icon.other {
+    @apply bg-gray-100 text-gray-600;
+  }
+  
+  /* 加载动画 */
+  .loading-spinner {
+    @apply animate-spin rounded-full border-2 border-gray-300 border-t-primary-600;
+  }
+  
+  /* 进度条 */
+  .progress-bar {
+    @apply w-full bg-gray-200 rounded-full h-2;
+  }
+  
+  .progress-bar-fill {
+    @apply bg-primary-600 h-2 rounded-full transition-all duration-300;
+  }
+  
+  /* 模态框动画 */
+  .modal-overlay {
+    @apply fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50;
+    animation: fadeIn 0.2s ease-out;
+  }
+  
+  .modal-content {
+    @apply bg-white rounded-lg shadow-xl max-w-md w-full mx-4;
+    animation: slideUp 0.3s ease-out;
+  }
+  
+  /* 侧边栏 */
+  .sidebar {
+    @apply fixed left-0 top-0 h-full bg-white border-r border-gray-200 z-40 transform transition-transform duration-300;
+  }
+  
+  .sidebar.open {
+    @apply translate-x-0;
+  }
+  
+  .sidebar.closed {
+    @apply -translate-x-full;
+  }
+  
+  /* 响应式设计 */
+  @media (min-width: 768px) {
+    .sidebar {
+      @apply relative translate-x-0;
+    }
+  }
+  
+  /* 工具提示 */
+  .tooltip {
+    @apply absolute z-50 px-2 py-1 text-sm text-white bg-gray-900 rounded shadow-lg opacity-0 pointer-events-none transition-opacity duration-200;
+  }
+  
+  .tooltip.show {
+    @apply opacity-100;
+  }
+  
+  /* 面包屑导航 */
+  .breadcrumb {
+    @apply flex items-center space-x-2 text-sm text-gray-600;
+  }
+  
+  .breadcrumb-item {
+    @apply hover:text-primary-600 cursor-pointer;
+  }
+  
+  .breadcrumb-separator {
+    @apply text-gray-400;
+  }
+  
+  /* 空状态 */
+  .empty-state {
+    @apply flex flex-col items-center justify-center py-12 text-gray-500;
+  }
+  
+  .empty-state-icon {
+    @apply w-16 h-16 mb-4 text-gray-300;
+  }
+  
+  /* 按钮变体 */
+  .btn {
+    @apply inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2;
+  }
+  
+  .btn-primary {
+    @apply bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500;
+  }
+  
+  .btn-secondary {
+    @apply bg-gray-200 text-gray-900 hover:bg-gray-300 focus:ring-gray-500;
+  }
+  
+  .btn-danger {
+    @apply bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
+  }
+  
+  .btn-ghost {
+    @apply text-gray-700 hover:bg-gray-100 focus:ring-gray-500;
+  }
+  
+  .btn-sm {
+    @apply px-3 py-1.5 text-xs;
+  }
+  
+  .btn-lg {
+    @apply px-6 py-3 text-base;
+  }
+}

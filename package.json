@@ -1,0 +1,72 @@
+{
+  "name": "yunp",
+  "version": "1.0.0",
+  "description": "A modern cloud storage system with multi-provider support",
+  "private": true,
+  "main": "index.js",
+  "scripts": {
+    "install:all": "npm install && npm run install:backend && npm run install:frontend",
+    "install:backend": "cd backend && npm install",
+    "install:frontend": "cd frontend && npm install",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build": "npm run build:backend && npm run build:frontend",
+    "build:backend": "cd backend && npm run build",
+    "build:frontend": "cd frontend && npm run build",
+    "start": "cd backend && npm start",
+    "test": "npm run test:backend && npm run test:frontend",
+    "test:backend": "cd backend && npm test",
+    "test:frontend": "cd frontend && npm test",
+    "lint": "npm run lint:backend && npm run lint:frontend",
+    "lint:backend": "cd backend && npm run lint",
+    "lint:frontend": "cd frontend && npm run lint",
+    "lint:fix": "npm run lint:fix:backend && npm run lint:fix:frontend",
+    "lint:fix:backend": "cd backend && npm run lint:fix",
+    "lint:fix:frontend": "cd frontend && npm run lint:fix",
+    "clean": "npm run clean:backend && npm run clean:frontend",
+    "clean:backend": "cd backend && rm -rf dist node_modules",
+    "clean:frontend": "cd frontend && rm -rf dist node_modules",
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "init-db": "cd backend && npm run init-db",
+    "init-plans": "cd backend && npm run init-plans",
+    "setup": "npm run install:all && npm run init-db && npm run init-plans"
+  },
+  "keywords": [
+    "cloud-storage",
+    "file-management",
+    "react",
+    "nodejs",
+    "typescript",
+    "onedrive",
+    "google-drive",
+    "dropbox",
+    "aws-s3",
+    "azure-blob"
+  ],
+  "author": "YunP Team",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/yunp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/yunp/issues"
+  },
+  "homepage": "https://github.com/your-username/yunp#readme",
+  "workspaces": [
+    "backend",
+    "frontend",
+    "shared"
+  ]
+}
