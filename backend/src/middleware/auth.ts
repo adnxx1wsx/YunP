@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { dbGet } from '../utils/database';
+import { validateJWTSecret } from '../utils/security';
+import { log } from '../utils/logger';
 
 export interface AuthenticatedRequest extends Request {
   user?: {
@@ -29,7 +31,18 @@ export const authenticateToken = async (
 
     const jwtSecret = process.env.JWT_SECRET;
     if (!jwtSecret) {
+      log.error('JWT_SECRET not configured');
       throw new Error('JWT_SECRET not configured');
+    }
+
+    // 验证JWT密钥安全性（仅在开发环境）
+    if (process.env.NODE_ENV !== 'production') {
+      try {
+        validateJWTSecret(jwtSecret);
+      } catch (error) {
+        log.error('JWT Secret validation failed:', error);
+        throw error;
+      }
     }
 
     const decoded = jwt.verify(token, jwtSecret) as { userId: string };

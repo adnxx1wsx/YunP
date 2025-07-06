@@ -295,30 +295,304 @@ const UsersTab: React.FC = () => {
   );
 };
 
-// 其他标签页的占位符组件
-const FilesTab: React.FC = () => (
-  <div className="text-center py-12">
-    <Files className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-    <h3 className="text-lg font-medium text-gray-900 mb-2">文件管理</h3>
-    <p className="text-gray-500">文件管理功能开发中...</p>
-  </div>
-);
+// 文件管理标签页
+const FilesTab: React.FC = () => {
+  const [files, setFiles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filters, setFilters] = useState({
+    search: '',
+    type: 'all',
+    dateRange: '7d'
+  });
 
-const SystemTab: React.FC = () => (
-  <div className="text-center py-12">
-    <Server className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-    <h3 className="text-lg font-medium text-gray-900 mb-2">系统监控</h3>
-    <p className="text-gray-500">系统监控功能开发中...</p>
-  </div>
-);
+  const { data: filesData, isLoading } = useQuery(
+    ['admin-files', filters],
+    () => adminApi.getFiles(filters),
+    { enabled: true }
+  );
 
-const SettingsTab: React.FC = () => (
-  <div className="text-center py-12">
-    <Settings className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-    <h3 className="text-lg font-medium text-gray-900 mb-2">系统设置</h3>
-    <p className="text-gray-500">系统设置功能开发中...</p>
-  </div>
-);
+  const handleDeleteFile = async (fileId: string) => {
+    if (window.confirm('确定要删除这个文件吗？此操作不可恢复。')) {
+      try {
+        await adminApi.deleteFile(fileId);
+        // 刷新数据
+      } catch (error) {
+        console.error('删除文件失败:', error);
+      }
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-gray-900">文件管理</h2>
+        <div className="flex space-x-4">
+          <input
+            type="text"
+            placeholder="搜索文件..."
+            value={filters.search}
+            onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+          />
+          <select
+            value={filters.type}
+            onChange={(e) => setFilters(prev => ({ ...prev, type: e.target.value }))}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+          >
+            <option value="all">所有类型</option>
+            <option value="image">图片</option>
+            <option value="video">视频</option>
+            <option value="document">文档</option>
+            <option value="other">其他</option>
+          </select>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <LoadingSpinner size="lg" text="加载文件数据..." />
+      ) : (
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">文件</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">用户</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">大小</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">上传时间</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">操作</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filesData?.data?.files?.map((file: any) => (
+                <tr key={file.id}>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="w-10 h-10 bg-gray-100 rounded flex items-center justify-center">
+                        <Files className="w-5 h-5 text-gray-600" />
+                      </div>
+                      <div className="ml-4">
+                        <div className="text-sm font-medium text-gray-900">{file.name}</div>
+                        <div className="text-sm text-gray-500">{file.mimeType}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {file.username}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {formatBytes(file.size)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {new Date(file.createdAt).toLocaleDateString()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <button
+                      onClick={() => handleDeleteFile(file.id)}
+                      className="text-red-600 hover:text-red-900"
+                    >
+                      删除
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// 系统监控标签页
+const SystemTab: React.FC = () => {
+  const { data: systemData, isLoading } = useQuery(
+    'admin-system',
+    () => adminApi.getSystemInfo(),
+    { refetchInterval: 30000 } // 30秒刷新一次
+  );
+
+  const { data: queueData } = useQuery(
+    'admin-queues',
+    () => adminApi.getQueues(),
+    { refetchInterval: 10000 } // 10秒刷新一次
+  );
+
+  const { data: cacheData } = useQuery(
+    'admin-cache',
+    () => adminApi.getCache(),
+    { refetchInterval: 15000 } // 15秒刷新一次
+  );
+
+  const handleClearCache = async () => {
+    if (window.confirm('确定要清空缓存吗？')) {
+      try {
+        await adminApi.clearCache();
+        // 刷新数据
+      } catch (error) {
+        console.error('清空缓存失败:', error);
+      }
+    }
+  };
+
+  const handleCleanQueues = async () => {
+    if (window.confirm('确定要清理队列吗？')) {
+      try {
+        await adminApi.cleanQueues();
+        // 刷新数据
+      } catch (error) {
+        console.error('清理队列失败:', error);
+      }
+    }
+  };
+
+  if (isLoading) {
+    return <LoadingSpinner size="lg" text="加载系统信息..." />;
+  }
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold text-gray-900">系统监控</h2>
+
+      {/* 系统状态 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">系统状态</h3>
+          <div className="space-y-3">
+            <div className="flex justify-between">
+              <span className="text-gray-600">运行时间</span>
+              <span className="font-medium">{formatUptime(systemData?.data?.uptime || 0)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">内存使用</span>
+              <span className="font-medium">
+                {systemData?.data?.memory?.heapUsed}MB / {systemData?.data?.memory?.heapTotal}MB
+              </span>
+            </div>
+            <ProgressBar
+              value={systemData?.data?.memory?.heapUsed || 0}
+              max={systemData?.data?.memory?.heapTotal || 100}
+              color="primary"
+            />
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-medium text-gray-900">队列状态</h3>
+            <button
+              onClick={handleCleanQueues}
+              className="text-sm text-primary-600 hover:text-primary-700"
+            >
+              清理队列
+            </button>
+          </div>
+          <div className="space-y-3">
+            {queueData?.data && Object.entries(queueData.data).map(([name, stats]: [string, any]) => (
+              <div key={name} className="flex justify-between">
+                <span className="text-gray-600">{name}</span>
+                <span className="font-medium">
+                  {stats.waiting} 等待 / {stats.active} 处理中
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-medium text-gray-900">缓存状态</h3>
+            <button
+              onClick={handleClearCache}
+              className="text-sm text-primary-600 hover:text-primary-700"
+            >
+              清空缓存
+            </button>
+          </div>
+          <div className="space-y-3">
+            <div className="flex justify-between">
+              <span className="text-gray-600">命中率</span>
+              <span className="font-medium">{cacheData?.data?.hitRate || 0}%</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">键数量</span>
+              <span className="font-medium">{cacheData?.data?.keys || 0}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">内存使用</span>
+              <span className="font-medium">{formatBytes(cacheData?.data?.memoryUsage || 0)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// 系统设置标签页
+const SettingsTab: React.FC = () => {
+  const [settings, setSettings] = useState({});
+  const [loading, setLoading] = useState(false);
+
+  const { data: configData, isLoading } = useQuery(
+    'admin-config',
+    () => adminApi.getConfig()
+  );
+
+  const handleUpdateSetting = async (key: string, value: any) => {
+    setLoading(true);
+    try {
+      await adminApi.updateConfig(key, { value, type: typeof value });
+      // 刷新数据
+    } catch (error) {
+      console.error('更新配置失败:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (isLoading) {
+    return <LoadingSpinner size="lg" text="加载系统配置..." />;
+  }
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold text-gray-900">系统设置</h2>
+
+      <div className="bg-white rounded-lg shadow">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h3 className="text-lg font-medium text-gray-900">系统配置</h3>
+        </div>
+        <div className="p-6 space-y-6">
+          {configData?.data?.map((config: any) => (
+            <div key={config.key} className="flex items-center justify-between">
+              <div>
+                <label className="text-sm font-medium text-gray-900">{config.key}</label>
+                <p className="text-sm text-gray-500">{config.description}</p>
+              </div>
+              <div className="w-64">
+                {config.type === 'boolean' ? (
+                  <input
+                    type="checkbox"
+                    checked={config.value === 'true'}
+                    onChange={(e) => handleUpdateSetting(config.key, e.target.checked)}
+                    className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                  />
+                ) : (
+                  <input
+                    type={config.type === 'number' ? 'number' : 'text'}
+                    value={config.value}
+                    onChange={(e) => handleUpdateSetting(config.key, e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
+                  />
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // 工具函数
 const formatBytes = (bytes: number): string => {

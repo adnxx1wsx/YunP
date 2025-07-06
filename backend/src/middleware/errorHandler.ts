@@ -1,8 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
+import { log } from '../utils/logger';
 
 export interface AppError extends Error {
   statusCode?: number;
   isOperational?: boolean;
+  code?: string;
+  details?: any;
 }
 
 export const errorHandler = (
@@ -31,32 +34,53 @@ export const errorHandler = (
 
   // 记录错误
   if (statusCode >= 500) {
-    console.error('Server Error:', {
-      message: err.message,
-      stack: err.stack,
+    log.error('Server Error:', err, {
       url: req.url,
       method: req.method,
       ip: req.ip,
-      userAgent: req.get('User-Agent')
+      userAgent: req.get('User-Agent'),
+      userId: (req as any).user?.id,
+      body: req.body,
+      params: req.params,
+      query: req.query
     });
-  } else {
-    console.warn('Client Error:', {
+  } else if (statusCode >= 400) {
+    log.warn('Client Error:', {
       message: err.message,
+      code: err.code,
       url: req.url,
       method: req.method,
-      ip: req.ip
+      ip: req.ip,
+      userId: (req as any).user?.id
     });
   }
 
   // 发送错误响应
-  res.status(statusCode).json({
+  const response: any = {
     success: false,
     error: message,
-    ...(process.env.NODE_ENV === 'development' && {
-      stack: err.stack,
-      details: err
-    })
-  });
+    timestamp: new Date().toISOString(),
+    path: req.url,
+    method: req.method
+  };
+
+  // 添加错误代码
+  if (err.code) {
+    response.code = err.code;
+  }
+
+  // 开发环境下添加详细信息
+  if (process.env.NODE_ENV === 'development') {
+    response.stack = err.stack;
+    response.details = err.details;
+  }
+
+  // 生产环境下隐藏敏感信息
+  if (process.env.NODE_ENV === 'production' && statusCode >= 500) {
+    response.error = 'Internal Server Error';
+  }
+
+  res.status(statusCode).json(response);
 };
 
 export const createError = (message: string, statusCode: number = 500): AppError => {

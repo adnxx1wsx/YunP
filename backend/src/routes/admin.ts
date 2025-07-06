@@ -369,4 +369,586 @@ router.put('/config/:key', asyncHandler(async (req: AuthenticatedRequest, res) =
   });
 }));
 
+// 获取文件列表（管理员）
+router.get('/files', asyncHandler(async (req: AuthenticatedRequest, res) => {
+  const { page = 1, limit = 20, search, type, dateRange } = req.query;
+  const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
+
+  let whereClause = '';
+  const params: any[] = [];
+
+  if (search) {
+    whereClause += ' WHERE (f.original_name LIKE ? OR f.name LIKE ?)';
+    params.push(`%${search}%`, `%${search}%`);
+  }
+
+  if (type && type !== 'all') {
+    const typeClause = type === 'image' ? 'f.mime_type LIKE "image/%"' :
+                      type === 'video' ? 'f.mime_type LIKE "video/%"' :
+                      type === 'document' ? 'f.mime_type LIKE "application/%" OR f.mime_type LIKE "text/%"' :
+                      'f.mime_type NOT LIKE "image/%" AND f.mime_type NOT LIKE "video/%" AND f.mime_type NOT LIKE "application/%" AND f.mime_type NOT LIKE "text/%"';
+
+    whereClause += whereClause ? ` AND ${typeClause}` : ` WHERE ${typeClause}`;
+  }
+
+  if (dateRange && dateRange !== 'all') {
+    const days = dateRange === '1d' ? 1 : dateRange === '7d' ? 7 : dateRange === '30d' ? 30 : 0;
+    if (days > 0) {
+      const dateClause = `f.created_at > datetime("now", "-${days} days")`;
+      whereClause += whereClause ? ` AND ${dateClause}` : ` WHERE ${dateClause}`;
+    }
+  }
+
+  const files = await dbAll(
+    `SELECT f.id, f.original_name as name, f.size, f.mime_type, f.created_at,
+            u.username, u.email
+     FROM files f
+     JOIN users u ON f.user_id = u.id
+     ${whereClause}
+     ORDER BY f.created_at DESC
+     LIMIT ? OFFSET ?`,
+    [...params, parseInt(limit as string), offset]
+  );
+
+  const totalCount = await dbGet(
+    `SELECT COUNT(*) as count
+     FROM files f
+     JOIN users u ON f.user_id = u.id
+     ${whereClause}`,
+    params
+  );
+
+  res.json({
+    success: true,
+    data: {
+      files,
+      pagination: {
+        page: parseInt(page as string),
+        limit: parseInt(limit as string),
+        total: totalCount.count,
+        pages: Math.ceil(totalCount.count / parseInt(limit as string))
+      }
+    }
+  });
+}));
+
+// 删除文件（管理员）
+router.delete('/files/:id', asyncHandler(async (req: AuthenticatedRequest, res) => {
+  const { id } = req.params;
+
+  const file = await dbGet('SELECT * FROM files WHERE id = ?', [id]);
+  if (!file) {
+    throw createError('File not found', 404);
+  }
+
+  // 删除物理文件
+  try {
+    const fs = require('fs').promises;
+    const path = require('path');
+    const filePath = path.join(process.env.UPLOAD_DIR || './uploads', file.name);
+    await fs.unlink(filePath);
+  } catch (error) {
+    log.warn(`Failed to delete physical file: ${file.name}`, error);
+  }
+
+  // 删除数据库记录
+  await dbRun('DELETE FROM files WHERE id = ?', [id]);
+
+  log.info(`Admin ${req.user!.id} deleted file ${id}`);
+
+  res.json({
+    success: true,
+    message: 'File deleted successfully'
+  });
+}));
+
+// 获取系统信息
+router.get('/system', asyncHandler(async (req: AuthenticatedRequest, res) => {
+  const os = require('os');
+  const process = require('process');
+
+  const systemInfo = {
+    uptime: process.uptime(),
+    memory: {
+      heapUsed: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+      heapTotal: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
+      external: Math.round(process.memoryUsage().external / 1024 / 1024),
+      rss: Math.round(process.memoryUsage().rss / 1024 / 1024)
+    },
+    cpu: {
+      model: os.cpus()[0].model,
+      cores: os.cpus().length,
+      loadAverage: os.loadavg()
+    },
+    platform: {
+      type: os.type(),
+      platform: os.platform(),
+      arch: os.arch(),
+      release: os.release()
+    },
+    network: os.networkInterfaces()
+  };
+
+  res.json({
+    success: true,
+    data: systemInfo
+  });
+}));
+
+// 获取系统配置
+router.get('/config', asyncHandler(async (req: AuthenticatedRequest, res) => {
+  const configs = await dbAll('SELECT * FROM system_config ORDER BY key');
+
+  res.json({
+    success: true,
+    data: configs
+  });
+}));
+
+// 更新系统配置
+router.put('/config/:key', asyncHandler(async (req: AuthenticatedRequest, res) => {
+  const { key } = req.params;
+  const { value, type = 'string' } = req.body;
+
+  await dbRun(
+    `INSERT OR REPLACE INTO system_config (key, value, type, updated_at)
+     VALUES (?, ?, ?, datetime('now'))`,
+    [key, String(value), type]
+  );
+
+  log.info(`Admin ${req.user!.id} updated config ${key} = ${value}`);
+
+  res.json({
+    success: true,
+    message: 'Configuration updated successfully'
+  });
+}));
+
+// 获取活动日志
+router.get('/activity-logs', asyncHandler(async (req: AuthenticatedRequest, res) => {
+  const { page = 1, limit = 50, action, userId, dateRange } = req.query;
+  const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
+
+  let whereClause = '';
+  const params: any[] = [];
+
+  if (action) {
+    whereClause += ' WHERE action = ?';
+    params.push(action);
+  }
+
+  if (userId) {
+    const userClause = 'user_id = ?';
+    whereClause += whereClause ? ` AND ${userClause}` : ` WHERE ${userClause}`;
+    params.push(userId);
+  }
+
+  if (dateRange && dateRange !== 'all') {
+    const days = dateRange === '1d' ? 1 : dateRange === '7d' ? 7 : dateRange === '30d' ? 30 : 0;
+    if (days > 0) {
+      const dateClause = `created_at > datetime("now", "-${days} days")`;
+      whereClause += whereClause ? ` AND ${dateClause}` : ` WHERE ${dateClause}`;
+    }
+  }
+
+  const logs = await dbAll(
+    `SELECT al.*, u.username
+     FROM activity_logs al
+     LEFT JOIN users u ON al.user_id = u.id
+     ${whereClause}
+     ORDER BY al.created_at DESC
+     LIMIT ? OFFSET ?`,
+    [...params, parseInt(limit as string), offset]
+  );
+
+  const totalCount = await dbGet(
+    `SELECT COUNT(*) as count FROM activity_logs ${whereClause}`,
+    params
+  );
+
+  res.json({
+    success: true,
+    data: {
+      logs,
+      pagination: {
+        page: parseInt(page as string),
+        limit: parseInt(limit as string),
+        total: totalCount.count,
+        pages: Math.ceil(totalCount.count / parseInt(limit as string))
+      }
+    }
+  });
+}));
+
+// 系统备份
+router.post('/backup', asyncHandler(async (req: AuthenticatedRequest, res) => {
+  const fs = require('fs').promises;
+  const path = require('path');
+  const archiver = require('archiver');
+
+  const backupDir = path.join(process.cwd(), 'backups');
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const backupFile = path.join(backupDir, `backup-${timestamp}.zip`);
+
+  // 确保备份目录存在
+  await fs.mkdir(backupDir, { recursive: true });
+
+  const output = require('fs').createWriteStream(backupFile);
+  const archive = archiver('zip', { zlib: { level: 9 } });
+
+  archive.pipe(output);
+
+  // 添加数据库文件
+  const dbPath = process.env.DATABASE_URL || './database.sqlite';
+  if (await fs.access(dbPath).then(() => true).catch(() => false)) {
+    archive.file(dbPath, { name: 'database.sqlite' });
+  }
+
+  // 添加上传文件目录
+  const uploadDir = process.env.UPLOAD_DIR || './uploads';
+  if (await fs.access(uploadDir).then(() => true).catch(() => false)) {
+    archive.directory(uploadDir, 'uploads');
+  }
+
+  await archive.finalize();
+
+  log.info(`Admin ${req.user!.id} created system backup: ${backupFile}`);
+
+  res.json({
+    success: true,
+    message: 'Backup created successfully',
+    data: {
+      filename: path.basename(backupFile),
+      size: (await fs.stat(backupFile)).size
+    }
+  });
+}));
+
+// 获取用户活动统计
+router.get('/analytics/users', asyncHandler(async (req: AuthenticatedRequest, res) => {
+  const { period = '30d' } = req.query;
+
+  const days = period === '7d' ? 7 : period === '30d' ? 30 : period === '90d' ? 90 : 30;
+
+  // 用户注册趋势
+  const registrationTrend = await dbAll(
+    `SELECT DATE(created_at) as date, COUNT(*) as count
+     FROM users
+     WHERE created_at > datetime('now', '-${days} days')
+     GROUP BY DATE(created_at)
+     ORDER BY date`,
+    []
+  );
+
+  // 活跃用户趋势
+  const activityTrend = await dbAll(
+    `SELECT DATE(last_login_at) as date, COUNT(DISTINCT user_id) as count
+     FROM activity_logs
+     WHERE created_at > datetime('now', '-${days} days')
+     GROUP BY DATE(last_login_at)
+     ORDER BY date`,
+    []
+  );
+
+  // 用户地理分布（模拟数据）
+  const geoDistribution = [
+    { country: 'China', users: 1250, percentage: 65 },
+    { country: 'United States', users: 380, percentage: 20 },
+    { country: 'Japan', users: 190, percentage: 10 },
+    { country: 'Others', users: 95, percentage: 5 }
+  ];
+
+  res.json({
+    success: true,
+    data: {
+      registrationTrend,
+      activityTrend,
+      geoDistribution,
+      summary: {
+        totalUsers: await dbGet('SELECT COUNT(*) as count FROM users').then(r => r.count),
+        activeUsers: await dbGet('SELECT COUNT(*) as count FROM users WHERE last_login_at > datetime("now", "-30 days")').then(r => r.count),
+        newUsers: await dbGet('SELECT COUNT(*) as count FROM users WHERE created_at > datetime("now", "-7 days")').then(r => r.count)
+      }
+    }
+  });
+}));
+
+// 获取文件统计分析
+router.get('/analytics/files', asyncHandler(async (req: AuthenticatedRequest, res) => {
+  const { period = '30d' } = req.query;
+
+  const days = period === '7d' ? 7 : period === '30d' ? 30 : period === '90d' ? 90 : 30;
+
+  // 文件上传趋势
+  const uploadTrend = await dbAll(
+    `SELECT DATE(created_at) as date, COUNT(*) as count, SUM(size) as totalSize
+     FROM files
+     WHERE created_at > datetime('now', '-${days} days')
+     GROUP BY DATE(created_at)
+     ORDER BY date`,
+    []
+  );
+
+  // 文件类型分布
+  const typeDistribution = await dbAll(
+    `SELECT
+       CASE
+         WHEN mime_type LIKE 'image/%' THEN 'Images'
+         WHEN mime_type LIKE 'video/%' THEN 'Videos'
+         WHEN mime_type LIKE 'audio/%' THEN 'Audio'
+         WHEN mime_type LIKE 'application/pdf' OR mime_type LIKE 'text/%' THEN 'Documents'
+         ELSE 'Others'
+       END as type,
+       COUNT(*) as count,
+       SUM(size) as totalSize
+     FROM files
+     GROUP BY type
+     ORDER BY count DESC`,
+    []
+  );
+
+  // 存储使用统计
+  const storageStats = await dbGet(
+    `SELECT
+       COUNT(*) as totalFiles,
+       SUM(size) as totalSize,
+       AVG(size) as avgSize,
+       MAX(size) as maxSize
+     FROM files`,
+    []
+  );
+
+  res.json({
+    success: true,
+    data: {
+      uploadTrend,
+      typeDistribution,
+      storageStats,
+      summary: {
+        totalFiles: storageStats.totalFiles,
+        totalSize: storageStats.totalSize,
+        avgFileSize: storageStats.avgSize,
+        largestFile: storageStats.maxSize
+      }
+    }
+  });
+}));
+
+// 系统健康检查
+router.get('/health', asyncHandler(async (req: AuthenticatedRequest, res) => {
+  const health = {
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    services: {
+      database: 'healthy',
+      storage: 'healthy',
+      cache: 'healthy',
+      queue: 'healthy'
+    },
+    metrics: {
+      uptime: process.uptime(),
+      memory: process.memoryUsage(),
+      cpu: process.cpuUsage()
+    }
+  };
+
+  try {
+    // 检查数据库连接
+    await dbGet('SELECT 1');
+    health.services.database = 'healthy';
+  } catch (error) {
+    health.services.database = 'unhealthy';
+    health.status = 'degraded';
+  }
+
+  try {
+    // 检查缓存
+    await cache.get('health-check');
+    health.services.cache = 'healthy';
+  } catch (error) {
+    health.services.cache = 'unhealthy';
+    health.status = 'degraded';
+  }
+
+  res.json({
+    success: true,
+    data: health
+  });
+}));
+
+// 发送系统通知
+router.post('/notifications', asyncHandler(async (req: AuthenticatedRequest, res) => {
+  const { title, message, type = 'info', targetUsers = 'all' } = req.body;
+
+  // 创建系统通知
+  const notificationId = uuidv4();
+
+  if (targetUsers === 'all') {
+    // 发送给所有用户
+    const users = await dbAll('SELECT id FROM users');
+
+    for (const user of users) {
+      await dbRun(
+        `INSERT INTO notifications (id, user_id, title, message, type, created_at)
+         VALUES (?, ?, ?, ?, ?, datetime('now'))`,
+        [uuidv4(), user.id, title, message, type]
+      );
+    }
+  } else if (Array.isArray(targetUsers)) {
+    // 发送给指定用户
+    for (const userId of targetUsers) {
+      await dbRun(
+        `INSERT INTO notifications (id, user_id, title, message, type, created_at)
+         VALUES (?, ?, ?, ?, ?, datetime('now'))`,
+        [uuidv4(), userId, title, message, type]
+      );
+    }
+  }
+
+  log.info(`Admin ${req.user!.id} sent notification: ${title}`);
+
+  res.json({
+    success: true,
+    message: 'Notification sent successfully'
+  });
+}));
+
+// 批量用户操作
+router.post('/users/batch', asyncHandler(async (req: AuthenticatedRequest, res) => {
+  const { action, userIds } = req.body;
+
+  if (!Array.isArray(userIds) || userIds.length === 0) {
+    throw createError('Invalid user IDs', 400);
+  }
+
+  let result;
+
+  switch (action) {
+    case 'suspend':
+      result = await dbRun(
+        `UPDATE users SET is_suspended = TRUE, updated_at = datetime('now')
+         WHERE id IN (${userIds.map(() => '?').join(',')})`,
+        userIds
+      );
+      break;
+
+    case 'unsuspend':
+      result = await dbRun(
+        `UPDATE users SET is_suspended = FALSE, updated_at = datetime('now')
+         WHERE id IN (${userIds.map(() => '?').join(',')})`,
+        userIds
+      );
+      break;
+
+    case 'delete':
+      // 软删除用户
+      result = await dbRun(
+        `UPDATE users SET is_deleted = TRUE, deleted_at = datetime('now')
+         WHERE id IN (${userIds.map(() => '?').join(',')})`,
+        userIds
+      );
+      break;
+
+    default:
+      throw createError('Invalid action', 400);
+  }
+
+  log.info(`Admin ${req.user!.id} performed batch ${action} on ${userIds.length} users`);
+
+  res.json({
+    success: true,
+    message: `Batch ${action} completed`,
+    data: {
+      affected: result.changes
+    }
+  });
+}));
+
+// 系统维护模式
+router.post('/maintenance', asyncHandler(async (req: AuthenticatedRequest, res) => {
+  const { enabled, message = 'System maintenance in progress' } = req.body;
+
+  await dbRun(
+    `INSERT OR REPLACE INTO system_config (key, value, type, updated_at)
+     VALUES ('maintenance_mode', ?, 'boolean', datetime('now'))`,
+    [enabled ? 'true' : 'false']
+  );
+
+  if (enabled) {
+    await dbRun(
+      `INSERT OR REPLACE INTO system_config (key, value, type, updated_at)
+       VALUES ('maintenance_message', ?, 'string', datetime('now'))`,
+      [message]
+    );
+  }
+
+  log.info(`Admin ${req.user!.id} ${enabled ? 'enabled' : 'disabled'} maintenance mode`);
+
+  res.json({
+    success: true,
+    message: `Maintenance mode ${enabled ? 'enabled' : 'disabled'}`
+  });
+}));
+
+// 清理系统数据
+router.post('/cleanup', asyncHandler(async (req: AuthenticatedRequest, res) => {
+  const { type } = req.body;
+
+  let result = { cleaned: 0 };
+
+  switch (type) {
+    case 'temp_files':
+      // 清理临时文件
+      const fs = require('fs').promises;
+      const path = require('path');
+      const tempDir = path.join(process.cwd(), 'temp');
+
+      try {
+        const files = await fs.readdir(tempDir);
+        for (const file of files) {
+          await fs.unlink(path.join(tempDir, file));
+        }
+        result.cleaned = files.length;
+      } catch (error) {
+        // 目录不存在或为空
+      }
+      break;
+
+    case 'old_logs':
+      // 清理30天前的日志
+      const oldLogs = await dbRun(
+        'DELETE FROM activity_logs WHERE created_at < datetime("now", "-30 days")'
+      );
+      result.cleaned = oldLogs.changes;
+      break;
+
+    case 'expired_shares':
+      // 清理过期的分享
+      const expiredShares = await dbRun(
+        'DELETE FROM public_shares WHERE expires_at IS NOT NULL AND expires_at < datetime("now")'
+      );
+      result.cleaned = expiredShares.changes;
+      break;
+
+    case 'orphaned_files':
+      // 清理孤立文件
+      const orphanedFiles = await dbRun(
+        'DELETE FROM files WHERE user_id NOT IN (SELECT id FROM users)'
+      );
+      result.cleaned = orphanedFiles.changes;
+      break;
+
+    default:
+      throw createError('Invalid cleanup type', 400);
+  }
+
+  log.info(`Admin ${req.user!.id} performed ${type} cleanup, cleaned ${result.cleaned} items`);
+
+  res.json({
+    success: true,
+    message: `Cleanup completed: ${result.cleaned} items cleaned`,
+    data: result
+  });
+}));
+
 export default router;

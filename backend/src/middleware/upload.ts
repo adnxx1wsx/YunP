@@ -3,59 +3,18 @@ import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { Request } from 'express';
 import { AuthenticatedRequest } from './auth';
+import {
+  SAFE_MIME_TYPES,
+  validateFileType,
+  validateFileContent,
+  sanitizeFilename
+} from '../utils/security';
+import { log } from '../utils/logger';
 
 // 文件大小限制 (默认 100MB)
 const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE?.replace(/[^\d]/g, '') || '104857600');
 
-// 允许的文件类型
-const ALLOWED_MIME_TYPES = [
-  // 图片
-  'image/jpeg',
-  'image/jpg',
-  'image/png',
-  'image/gif',
-  'image/webp',
-  'image/svg+xml',
-  
-  // 视频
-  'video/mp4',
-  'video/avi',
-  'video/mov',
-  'video/wmv',
-  'video/flv',
-  'video/webm',
-  
-  // 音频
-  'audio/mp3',
-  'audio/wav',
-  'audio/ogg',
-  'audio/aac',
-  'audio/flac',
-  
-  // 文档
-  'application/pdf',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/vnd.ms-excel',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  'application/vnd.ms-powerpoint',
-  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-  
-  // 文本
-  'text/plain',
-  'text/csv',
-  'text/html',
-  'text/css',
-  'text/javascript',
-  'application/json',
-  'application/xml',
-  
-  // 压缩文件
-  'application/zip',
-  'application/x-rar-compressed',
-  'application/x-7z-compressed',
-  'application/gzip'
-];
+// 注意：现在使用安全的文件类型列表 (从 security.ts 导入)
 
 // 存储配置
 const storage = multer.diskStorage({
@@ -65,31 +24,55 @@ const storage = multer.diskStorage({
   },
   
   filename: (req: AuthenticatedRequest, file: Express.Multer.File, cb) => {
+    // 清理原始文件名
+    const sanitizedName = sanitizeFilename(file.originalname);
+
     // 生成唯一文件名
     const uniqueId = uuidv4();
-    const ext = path.extname(file.originalname);
+    const ext = path.extname(sanitizedName);
     const filename = `${uniqueId}${ext}`;
+
+    // 记录文件上传
+    log.file(`File upload: ${sanitizedName} -> ${filename}`, file.fieldname, req.user?.id);
+
     cb(null, filename);
   }
 });
 
-// 文件过滤器
+// 安全的文件过滤器
 const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-  // 检查文件类型
-  if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
-    const error = new Error(`File type ${file.mimetype} is not allowed`) as any;
-    error.code = 'INVALID_FILE_TYPE';
-    return cb(error, false);
+  try {
+    // 使用安全验证函数检查文件类型
+    if (!validateFileType(file.mimetype, file.originalname)) {
+      const error = new Error(`File type ${file.mimetype} is not allowed for security reasons`) as any;
+      error.code = 'INVALID_FILE_TYPE';
+      log.security(`Blocked unsafe file upload: ${file.mimetype}`, req.ip, req.get('User-Agent'), {
+        filename: file.originalname,
+        userId: (req as AuthenticatedRequest).user?.id
+      });
+      return cb(error, false);
+    }
+
+    // 检查文件名
+    if (!file.originalname || file.originalname.length > 255) {
+      const error = new Error('Invalid filename') as any;
+      error.code = 'INVALID_FILENAME';
+      return cb(error, false);
+    }
+
+    // 检查文件名中的危险字符
+    const sanitizedName = sanitizeFilename(file.originalname);
+    if (sanitizedName !== file.originalname) {
+      log.security(`File name sanitized: ${file.originalname} -> ${sanitizedName}`, req.ip, req.get('User-Agent'));
+    }
+
+    cb(null, true);
+  } catch (error) {
+    log.error('File filter error:', error);
+    const filterError = new Error('File validation failed') as any;
+    filterError.code = 'VALIDATION_ERROR';
+    cb(filterError, false);
   }
-  
-  // 检查文件名
-  if (!file.originalname || file.originalname.length > 255) {
-    const error = new Error('Invalid filename') as any;
-    error.code = 'INVALID_FILENAME';
-    return cb(error, false);
-  }
-  
-  cb(null, true);
 };
 
 // Multer 配置
