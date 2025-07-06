@@ -105,51 +105,75 @@ YunP 已从基础云盘系统升级为**企业级全功能云存储平台**，�
 ## 🚀 快速开始
 
 ### 环境要求
-- Node.js 18+
+- Node.js 16+
 - npm 或 yarn
 - Git
 
-### 1. 克隆项目
+### 方式一：自动安装 (推荐)
 ```bash
-git clone https://github.com/your-username/yunp.git
-cd yunp
+# Linux/macOS
+git clone https://github.com/adnxx1wsx/YunP.git
+cd YunP
+chmod +x install.sh
+./install.sh
+
+# Windows
+git clone https://github.com/adnxx1wsx/YunP.git
+cd YunP
+install.bat
 ```
 
-### 2. 安装依赖
+### 方式二：手动安装
 ```bash
-# 安装所有依赖
-npm run install:all
+# 1. 克隆项目
+git clone https://github.com/adnxx1wsx/YunP.git
+cd YunP
 
-# 或者分别安装
+# 2. 安装依赖
 npm install
 cd backend && npm install
 cd ../frontend && npm install
-```
 
-### 3. 环境配置
-```bash
-# 复制环境变量文件
+# 3. 配置环境
 cp backend/.env.example backend/.env
+# 编辑 .env 文件配置数据库等信息
 
-# 编辑环境变量
-nano backend/.env
+# 4. 初始化数据库
+cd backend && node src/scripts/initDatabase.js
+
+# 5. 启动服务
+cd backend && node simple-server.js
 ```
 
-### 4. 数据库初始化
-```bash
-cd backend
-npm run init-db
-npm run init-plans
+### 🌐 访问方式
+
+#### 主要访问地址
+- **Web界面**: http://localhost:8080
+- **API接口**: http://localhost:8080/api
+- **测试页面**: http://localhost:8080/test.html
+
+#### 备用访问方式
+- **IP地址**: http://127.0.0.1:8080
+- **独立HTML**: 下载 `yunp-standalone.html` 双击打开
+- **一键启动**: 运行 `./open-yunp.sh` (Linux/macOS)
+
+### 🔐 默认账户
+```
+邮箱: admin@yunp.com
+密码: admin123
+⚠️ 首次使用请及时修改密码！
 ```
 
-### 5. 启动开发服务器
+### 🛠️ 快速启动脚本
 ```bash
-# 同时启动前后端
-npm run dev
+# Linux/macOS 一键启动
+./start-yunp.sh
 
-# 或者分别启动
-npm run dev:backend  # 后端: http://localhost:3001
-npm run dev:frontend # 前端: http://localhost:3000
+# 或者使用便捷脚本
+./open-yunp.sh
+
+# Windows
+start.bat
 ```
 
 ## 🔧 配置说明
